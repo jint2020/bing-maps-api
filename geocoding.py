@@ -1,5 +1,6 @@
 import json
 import requests
+from util.utils import imagine_address
 
 """
 You can get information for a location in any country/region by setting one or more of the parameters in the following URL.
@@ -10,17 +11,41 @@ Example that return json result (the o (output) parameter is not set.):
 http://dev.virtualearth.net/REST/v1/Locations/US/WA/98052/Redmond/1%20Microsoft%20Way?&key={BingMapsKey}
 """
 
-# url= "http://dev.virtualearth.net/REST/v1/Locations?countryRegion=CHN&adminDistrict={adminDistrict}&locality={locality}&postalCode={postalCode}&addressLine={addressLine}&userLocation={userLocation}&userIp={userIp}&usermapView={usermapView}&includeNeighborhood={includeNeighborhood}&maxResults={maxResults}&key={BingMapsKey}"
-url = "http://dev.virtualearth.net/REST/v1/Locations/US/WA/98052/Redmond/1%20Microsoft%20Way?&key=Aru3W4AtCInoXdKGL138-UoxYY2XL1gSuCJdA14ALi0MTxGxA4axXx3JDaV8BCOF"
-response = requests.get(url)
-print(response.text)
-
-
 # 定义一个函数，用于解析url返回的json数据
 
-import requests
 
-def bing_maps_geocode(countryRegion=None, adminDistrict=None, locality=None, postalCode=None, addressLine=None, userLocation=None, userIp=None, usermapView=None, includeNeighborhood=None, maxResults=None, BingMapsKey=None):
+def geocode_chn(full_address = None,countryRegion=None,
+                adminDistrict=None,
+                locality=None,
+                postalCode=None,
+                addressLine=None,
+                userLocation=None,
+                userIp=None,
+                usermapView=None,
+                includeNeighborhood=None,
+                maxResults=None,
+                BingMapsKey=None):
+    if BingMapsKey is None:
+        return {"Error in Bing Maps request. Status: api key required."}
+    
+    """
+        {'province': '广东省', 'city': '佛山市', 'county': '南海区', 'detail': '南海万科广场', 
+        'full_location': '广东省佛山市南海区南海万科广场', 'orig_location': '南海区南海万科广场'}
+    """
+
+    if full_address is not None:
+        address_dict = imagine_address(full_address)
+        countryRegion="CHN"
+        adminDistrict=address_dict["province"]
+        locality=address_dict["city"]
+        addressLine=address_dict["detail"]
+        postalCode=None
+        userLocation=None
+        userIp=None
+        usermapView=None 
+        includeNeighborhood=None 
+        maxResults=None
+
     # 构建请求URL
     base_url = "http://dev.virtualearth.net/REST/v1/Locations"
     params = {
@@ -47,26 +72,27 @@ def bing_maps_geocode(countryRegion=None, adminDistrict=None, locality=None, pos
     if response.status_code == 200:
         # 解析JSON响应
         result = response.json()
-        return result
+        # print(result)
+
+        return simplify_output(result)
     else:
         # 打印错误信息
         print("Error in Bing Maps API request. Status:", response.status_code)
         return None
 
-# 调用函数并传入相应参数
-result = bing_maps_geocode(countryRegion="your_country_region",
-                            adminDistrict="your_admin_district",
-                            locality=None,
-                            postalCode="your_postal_code",
-                            addressLine=None,
-                            userLocation=None,
-                            userIp="your_user_ip",
-                            usermapView="your_user_map_view",
-                            includeNeighborhood=None,
-                            maxResults="10",
-                            BingMapsKey="your_bing_maps_api_key")
+def simplify_output(response):
+    # 如果传入json为None 返回0
+    if response is None:
+        return {"Error in Bing Maps API request. Status:", response.status_code}
+        
+    keys_to_remove = ['authenticationResultCode', 'brandLogoUri', 'copyright','traceId']
+    formatted_response = {k: v for k, v in response.items() if k not in keys_to_remove}
 
+    return formatted_response
 
-# 打印结果
-if __name__ == "__main__":
-    print(result)
+# if __name__ == "__main__":
+    # 分开传参
+    # res = geocode_chn(countryRegion="CHN", adminDistrict="广东省",locality="佛山市", addressLine="半岛路17号", postalCode="", userLocation=None, userIp=None,usermapView=None,includeNeighborhood=None, maxResults=None, BingMapsKey=<your_key>)
+    # 传单一地址（尽可能详细）
+    # res = geocode_chn(full_address="南海区南海万科广场",BingMapsKey=<your_key>)
+    # print(res)
